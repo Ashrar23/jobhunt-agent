@@ -1,0 +1,559 @@
+<title>Job Hunt Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: a pipeline strip on top, then a working column (up next + roles) beside a reference rail (latest scan + questions). Stacks to one column on phones. */
+:root {
+  --bg: #F4F5F9;
+  --surface: #FFFFFF;
+  --sunk: #ECEEF5;
+  --ink: #16182B;
+  --muted: #5E6178;
+  --line: #DFE1EB;
+  --accent: #3B3BB3;
+  --accent-ink: #FFFFFF;
+  --accent-soft: #E7E7F8;
+  --ok: #1F7A4D;   --ok-soft: #E2F2E9;
+  --warn: #9A5600; --warn-soft: #FBEFD9;
+  --bad: #B3261E;  --bad-soft: #F9E3E1;
+  --shadow: 0 1px 2px rgba(22, 24, 43, .06), 0 4px 16px rgba(22, 24, 43, .05);
+  --font-display: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --radius: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E0F1A; --surface: #171929; --sunk: #12131F; --ink: #E9EAF4; --muted: #9A9DB5; --line: #2A2D44;
+    --accent: #9B9CF5; --accent-ink: #0E0F1A; --accent-soft: #24254A;
+    --ok: #5CC48F; --ok-soft: #16301F; --warn: #E9A23B; --warn-soft: #33260F; --bad: #F07B72; --bad-soft: #3A1A18;
+    --shadow: 0 1px 2px rgba(0,0,0,.4); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0E0F1A; --surface: #171929; --sunk: #12131F; --ink: #E9EAF4; --muted: #9A9DB5; --line: #2A2D44;
+  --accent: #9B9CF5; --accent-ink: #0E0F1A; --accent-soft: #24254A;
+  --ok: #5CC48F; --ok-soft: #16301F; --warn: #E9A23B; --warn-soft: #33260F; --bad: #F07B72; --bad-soft: #3A1A18;
+  --shadow: 0 1px 2px rgba(0,0,0,.4); color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--font-body); }
+.wrap { max-width: 1180px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 64px; display: grid; gap: 28px; }
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; margin: 0; }
+a { color: var(--accent); }
+button, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.eyebrow { font: 600 11px/1.2 var(--font-body); text-transform: uppercase; letter-spacing: .09em; color: var(--muted); }
+.muted { color: var(--muted); }
+
+/* Header */
+.top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 24px; }
+.top h1 { font-size: clamp(28px, 4.2vw, 40px); font-weight: 700; letter-spacing: -.01em; line-height: 1.05; }
+.top .sub { margin-top: 6px; color: var(--muted); }
+.sync { font-size: 12.5px; color: var(--muted); text-align: right; }
+.sync b { color: var(--ink); font-weight: 500; }
+
+/* Pipeline strip */
+.pipeline { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+.stage { appearance: none; border: 0; background: none; text-align: left; padding: 14px 16px 14px; cursor: pointer; display: grid; gap: 2px; border-right: 1px solid var(--line); position: relative; min-width: 0; }
+.stage:last-child { border-right: 0; }
+.stage .n { font: 600 34px/1 var(--font-display); font-variant-numeric: tabular-nums; }
+.stage .l { font-size: 13px; color: var(--muted); }
+.stage[data-zero="true"] .n { color: var(--muted); opacity: .55; }
+.stage:hover { background: var(--sunk); }
+.stage[aria-pressed="true"] { background: var(--accent-soft); }
+.stage[aria-pressed="true"]::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--accent); }
+.stage .arrow { position: absolute; right: -7px; top: 50%; width: 12px; height: 12px; transform: translateY(-50%) rotate(45deg); background: var(--surface); border-top: 1px solid var(--line); border-right: 1px solid var(--line); z-index: 1; }
+.stage:last-child .arrow, .stage[data-k="closed"] .arrow { display: none; }
+
+/* Main grid */
+.grid { display: grid; grid-template-columns: minmax(0, 1.9fr) minmax(0, 1fr); gap: 28px; align-items: start; }
+.col { display: grid; gap: 28px; min-width: 0; }
+.sec-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; margin-bottom: 12px; }
+.sec-head h2 { font-size: 20px; font-weight: 600; }
+.chipbtn { appearance: none; border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 4px 12px; font-size: 13px; cursor: pointer; }
+.chipbtn[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+
+/* Up next */
+.upnext { display: grid; gap: 8px; }
+.due { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; }
+.due .when { font: 600 13px/1.2 var(--font-mono); padding: 6px 8px; border-radius: 6px; background: var(--sunk); color: var(--muted); white-space: nowrap; text-align: center; min-width: 74px; }
+.due[data-urgency="overdue"] .when { background: var(--bad-soft); color: var(--bad); }
+.due[data-urgency="soon"] .when { background: var(--warn-soft); color: var(--warn); }
+.due .what { min-width: 0; }
+.due .what b { font-weight: 600; }
+.due .what span { color: var(--muted); }
+.linkbtn { appearance: none; border: 0; background: none; padding: 0; color: var(--accent); cursor: pointer; font-weight: 500; font-size: 14px; white-space: nowrap; }
+.linkbtn:hover { text-decoration: underline; }
+
+/* Roles */
+.roles { display: grid; gap: 8px; }
+.role { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.role[data-closed="true"] { opacity: .62; }
+.role-row { display: grid; grid-template-columns: minmax(0, 1fr) 132px; gap: 12px; align-items: center; padding: 10px 12px 10px 10px; }
+.role-main { appearance: none; border: 0; background: none; padding: 0; text-align: left; cursor: pointer; display: grid; grid-template-columns: 52px minmax(0, 1fr) 96px; gap: 12px; align-items: center; min-width: 0; }
+.code { font: 600 13px/1 var(--font-mono); letter-spacing: .04em; display: grid; place-items: center; height: 40px; border-radius: 8px; background: var(--sunk); color: var(--ink); }
+.title { min-width: 0; display: grid; gap: 1px; }
+.title .co { font-weight: 600; }
+.title .ro { overflow-wrap: anywhere; }
+.title .meta { font-size: 12.5px; color: var(--muted); }
+.title .meta .next-due[data-urgency="overdue"] { color: var(--bad); font-weight: 500; }
+.title .meta .next-due[data-urgency="soon"] { color: var(--warn); font-weight: 500; }
+.score { display: grid; gap: 4px; justify-items: end; }
+.score b { font: 600 18px/1 var(--font-display); font-variant-numeric: tabular-nums; }
+.score .bar { width: 100%; height: 4px; border-radius: 4px; background: var(--sunk); overflow: hidden; }
+.score .bar i { display: block; height: 100%; background: var(--accent); border-radius: 4px; }
+.status { appearance: none; -webkit-appearance: none; width: 100%; border: 1px solid transparent; border-radius: 999px; padding: 6px 28px 6px 12px; font-size: 13px; font-weight: 500; cursor: pointer;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: calc(100% - 15px) 52%, calc(100% - 10px) 52%; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; }
+.status:disabled { cursor: default; opacity: .7; }
+.st-found, .st-shortlisted { background-color: var(--sunk); color: var(--ink); border-color: var(--line); }
+.st-tailored { background-color: var(--accent-soft); color: var(--accent); }
+.st-applied { background-color: var(--accent); color: var(--accent-ink); }
+.st-screening, .st-interviewing { background-color: var(--ok-soft); color: var(--ok); }
+.st-offer { background-color: var(--ok); color: var(--surface); }
+.st-rejected, .st-withdrawn, .st-ghosted { background-color: var(--bad-soft); color: var(--bad); }
+.role-detail { border-top: 1px solid var(--line); padding: 14px 16px 16px; display: grid; gap: 14px; background: var(--sunk); }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 16px; margin: 0; }
+.facts div { min-width: 0; }
+.facts dt { font-size: 12px; color: var(--muted); }
+.facts dd { margin: 0; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.prose { margin: 0; max-width: 68ch; }
+.prose + .prose { margin-top: 2px; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; }
+.btn { appearance: none; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); border-radius: 8px; padding: 7px 14px; font-weight: 500; font-size: 14px; cursor: pointer; }
+.btn.ghost { background: transparent; color: var(--accent); }
+.btn:disabled { opacity: .55; cursor: default; }
+.path { font: 12.5px var(--font-mono); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 3px 8px; overflow-wrap: anywhere; user-select: all; }
+.draft { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; display: grid; gap: 10px; }
+.draft pre { margin: 0; white-space: pre-wrap; font: 14px/1.55 var(--font-body); max-width: 68ch; }
+.draft .note { font-size: 12.5px; color: var(--muted); }
+
+/* Rail panels */
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; display: grid; gap: 12px; }
+.panel h2 { font-size: 18px; font-weight: 600; }
+.scan-stats { display: flex; gap: 20px; }
+.scan-stats div { display: grid; }
+.scan-stats b { font: 600 24px/1 var(--font-display); font-variant-numeric: tabular-nums; }
+.scan-stats span { font-size: 12.5px; color: var(--muted); }
+.top3 { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+.top3 li { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 10px; align-items: start; }
+.top3 .sc { font: 600 15px/1.6 var(--font-display); color: var(--accent); font-variant-numeric: tabular-nums; }
+.top3 a { font-weight: 500; text-decoration: none; }
+.top3 a:hover { text-decoration: underline; }
+.top3 small { display: block; color: var(--muted); font-size: 12.5px; }
+.callout { font-size: 13.5px; background: var(--sunk); border-radius: 8px; padding: 10px 12px; }
+.q { display: grid; gap: 8px; padding-top: 12px; border-top: 1px solid var(--line); }
+.q:first-of-type { border-top: 0; padding-top: 0; }
+.q p { margin: 0; }
+.q .helps { font-size: 12px; color: var(--muted); }
+.q textarea { width: 100%; min-height: 64px; resize: vertical; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; background: var(--bg); font-size: 14px; }
+.q .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.q .answer { font-size: 14px; background: var(--ok-soft); color: var(--ink); border-radius: 8px; padding: 8px 10px; white-space: pre-wrap; }
+.q .saved { font-size: 12px; color: var(--ok); }
+details.answered summary { cursor: pointer; font-size: 13px; color: var(--muted); }
+
+.empty { border: 1px dashed var(--line); border-radius: var(--radius); padding: 22px; color: var(--muted); background: var(--surface); }
+.empty b { color: var(--ink); }
+footer { font-size: 12.5px; color: var(--muted); max-width: 72ch; }
+.toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 8px; font-size: 14px; box-shadow: var(--shadow); max-width: calc(100% - 32px); z-index: 10; }
+
+@media (max-width: 960px) {
+  .grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 640px) {
+  .wrap { padding-inline: 16px; padding-block: 20px 56px; gap: 22px; }
+  .pipeline { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .stage { border-bottom: 1px solid var(--line); padding: 12px; }
+  .stage:nth-child(3n) { border-right: 0; }
+  .stage .n { font-size: 28px; }
+  .stage .arrow { display: none; }
+  .role-row { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .role-main { grid-template-columns: 46px minmax(0, 1fr) 54px; }
+  .score .bar { display: none; }
+  .due { grid-template-columns: auto minmax(0, 1fr); }
+  .due .linkbtn { grid-column: 2; justify-self: start; }
+  .sync { text-align: left; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .role-detail { animation: open .18s ease-out; }
+  @keyframes open { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow" id="focus">Your target roles and locations</div>
+      <h1>Job Hunt</h1>
+      <div class="sub" id="floors">Set your salary floors in profile/board.json</div>
+    </div>
+    <div class="sync" id="sync">Connecting to your board…</div>
+  </header>
+
+  <nav class="pipeline" id="pipeline" aria-label="Pipeline stages"></nav>
+
+  <div class="grid">
+    <div class="col">
+      <section aria-labelledby="h-next">
+        <div class="sec-head"><h2 id="h-next">Up next</h2></div>
+        <div class="upnext" id="upnext"><div class="empty">Loading what's due…</div></div>
+      </section>
+      <section aria-labelledby="h-roles">
+        <div class="sec-head">
+          <h2 id="h-roles">Roles</h2>
+          <div id="filterchips" class="actions" role="group" aria-label="Show"></div>
+        </div>
+        <div class="roles" id="roles"><div class="empty">Loading your roles…</div></div>
+      </section>
+    </div>
+    <aside class="col">
+      <section class="panel" id="scan" aria-label="Latest scan"><h2>Latest scan</h2><div class="muted">Loading…</div></section>
+      <section class="panel" id="questions" aria-labelledby="h-q"><h2 id="h-q">Questions for you</h2><div class="muted">Loading…</div></section>
+    </aside>
+  </div>
+
+  <footer>
+    Claude keeps this board in step with <span class="mono">tracker.csv</span>. Status changes and answers you make here are picked up the next time you talk to Claude. Nothing on this page applies to jobs or sends messages; you do that yourself.
+  </footer>
+</div>
+<div class="toast" id="toast" hidden role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+  const STATUSES = [
+    ["found", "Found"], ["shortlisted", "Shortlisted"], ["tailored", "Tailored"], ["applied", "Applied"],
+    ["screening", "Screening"], ["interviewing", "Interviewing"], ["offer", "Offer"],
+    ["rejected", "Rejected"], ["withdrawn", "Withdrawn"], ["ghosted", "No reply"],
+  ];
+  const LABEL = Object.fromEntries(STATUSES);
+  const STAGES = [
+    { k: "found", label: "Found", has: ["found", "shortlisted"] },
+    { k: "tailored", label: "Tailored", has: ["tailored"] },
+    { k: "applied", label: "Applied", has: ["applied"] },
+    { k: "talking", label: "Interviewing", has: ["screening", "interviewing"] },
+    { k: "offer", label: "Offer", has: ["offer"] },
+    { k: "closed", label: "Closed", has: ["rejected", "withdrawn", "ghosted"] },
+  ];
+  const CLOSED = new Set(["rejected", "withdrawn", "ghosted"]);
+  const SENT = new Set(["applied", "screening", "interviewing"]);
+  const CITY = [
+    [/kuala lumpur|petaling/i, "KUL"], [/doha|qatar/i, "DOH"], [/abu dhabi/i, "AUH"], [/dubai|ajman/i, "DXB"],
+    [/riyadh/i, "RUH"], [/jeddah/i, "JED"], [/bengaluru|bangalore/i, "BLR"], [/chennai/i, "MAA"],
+    [/mumbai/i, "BOM"], [/kolkata/i, "CCU"], [/remote/i, "RMT"],
+  ];
+
+  const state = { roles: [], scans: [], questions: [], meta: null, loaded: { roles: false, scans: false, questions: false } };
+  const ui = { filter: "active", open: new Set(), drafts: {}, answers: {}, db: null, sample: null, readOnly: false };
+  try { ui.filter = localStorage.getItem("jh.filter") || "active"; } catch (e) {}
+
+  const $ = (id) => document.getElementById(id);
+  const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const safeUrl = (u) => /^https:\/\//i.test(String(u || "")) ? String(u) : "";
+  const today = () => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), d.getDate()); };
+  const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const parseDay = (s) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || ""); return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null; };
+  const fmtDay = (s) => { const d = parseDay(s); return d ? d.toLocaleDateString(undefined, { day: "numeric", month: "short" }) : "—"; };
+  const daysUntil = (s) => { const d = parseDay(s); return d ? Math.round((d - today()) / 86400000) : null; };
+  const relDue = (s) => {
+    const n = daysUntil(s);
+    if (n === null) return { text: "", urgency: "" };
+    if (n < 0) return { text: `${-n} day${n === -1 ? "" : "s"} overdue`, urgency: "overdue" };
+    if (n === 0) return { text: "today", urgency: "overdue" };
+    if (n === 1) return { text: "tomorrow", urgency: "soon" };
+    return { text: `in ${n} days`, urgency: n <= 3 ? "soon" : "" };
+  };
+  const cityCode = (r) => r.city_code || (CITY.find(([re]) => re.test(r.location || "")) || [, "—"])[1];
+
+  let toastTimer;
+  function toast(msg) {
+    const t = $("toast"); t.textContent = msg; t.hidden = false;
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 3200);
+  }
+
+  // ---------- Pipeline ----------
+  function renderPipeline() {
+    const counts = Object.fromEntries(STAGES.map((s) => [s.k, state.roles.filter((r) => s.has.includes(r.status)).length]));
+    $("pipeline").innerHTML = STAGES.map((s) => `
+      <button class="stage" type="button" data-k="${s.k}" data-zero="${counts[s.k] === 0}" aria-pressed="${ui.filter === s.k}">
+        <span class="n">${counts[s.k]}</span><span class="l">${s.label}</span><span class="arrow" aria-hidden="true"></span>
+      </button>`).join("");
+  }
+  $("pipeline").addEventListener("click", (e) => {
+    const b = e.target.closest(".stage"); if (!b) return;
+    setFilter(ui.filter === b.dataset.k ? "active" : b.dataset.k);
+  });
+
+  function setFilter(f) {
+    ui.filter = f;
+    try { localStorage.setItem("jh.filter", f); } catch (e) {}
+    renderPipeline(); renderFilterChips(); renderRoles();
+  }
+
+  function renderFilterChips() {
+    const chips = [["active", "Open"], ["all", "All"]];
+    $("filterchips").innerHTML = chips.map(([k, l]) => `<button type="button" class="chipbtn" data-f="${k}" aria-pressed="${ui.filter === k}">${l}</button>`).join("");
+  }
+  $("filterchips").addEventListener("click", (e) => { const b = e.target.closest("[data-f]"); if (b) setFilter(b.dataset.f); });
+
+  // ---------- Up next ----------
+  function renderUpNext() {
+    if (!state.loaded.roles) return;
+    const items = state.roles
+      .filter((r) => r.next_action && r.next_action_due && !CLOSED.has(r.status))
+      .sort((a, b) => (a.next_action_due || "").localeCompare(b.next_action_due || ""));
+    const open = state.questions.filter((q) => !q.answer).length;
+    let html = items.map((r) => {
+      const d = relDue(r.next_action_due);
+      const canDraft = ui.sample && SENT.has(r.status) && /follow/i.test(r.next_action);
+      return `<div class="due" data-urgency="${d.urgency}">
+        <span class="when">${esc(d.text || fmtDay(r.next_action_due))}</span>
+        <span class="what"><b>${esc(r.company)}</b> · ${esc(r.next_action)}<br><span>${esc(r.role)} · due ${esc(fmtDay(r.next_action_due))}</span></span>
+        ${canDraft ? `<button class="linkbtn" type="button" data-draft-open="${esc(r._id)}">Draft follow-up</button>` : `<button class="linkbtn" type="button" data-open="${esc(r._id)}">Open</button>`}
+      </div>`;
+    }).join("");
+    if (open) html += `<div class="due"><span class="when">${open} open</span><span class="what"><b>Questions for you</b><br><span>Each answer makes every future resume stronger.</span></span><a class="linkbtn" href="#questions">Answer</a></div>`;
+    $("upnext").innerHTML = html || `<div class="empty"><b>Nothing due.</b> When you apply somewhere, Claude sets a follow-up date and it shows here.</div>`;
+  }
+  $("upnext").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-open],[data-draft-open]"); if (!b) return;
+    const id = b.dataset.open || b.dataset.draftOpen;
+    ui.open.add(id);
+    if (!visibleRoles().some((r) => r._id === id)) setFilter("all"); else renderRoles();
+    const el = document.querySelector(`.role[data-id="${CSS.escape(id)}"]`);
+    if (el) el.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+    if (b.dataset.draftOpen) draftFollowUp(id, false);
+  });
+
+  // ---------- Roles ----------
+  function visibleRoles() {
+    const st = STAGES.find((s) => s.k === ui.filter);
+    let list = state.roles;
+    if (st) list = list.filter((r) => st.has.includes(r.status));
+    else if (ui.filter === "active") list = list.filter((r) => !CLOSED.has(r.status));
+    const rank = (r) => SENT.has(r.status) || r.status === "offer" ? 0 : r.status === "tailored" ? 1 : CLOSED.has(r.status) ? 3 : 2;
+    return [...list].sort((a, b) => rank(a) - rank(b) || (b.fit_score || 0) - (a.fit_score || 0));
+  }
+
+  function roleDetail(r) {
+    const url = safeUrl(r.url);
+    const draft = ui.drafts[r._id];
+    const canDraft = ui.sample && SENT.has(r.status);
+    return `<div class="role-detail">
+      <dl class="facts">
+        <div><dt>Location</dt><dd>${esc(r.location)}</dd></div>
+        <div><dt>Found</dt><dd>${esc(fmtDay(r.found_on))}</dd></div>
+        <div><dt>Applied</dt><dd>${esc(r.applied_on ? fmtDay(r.applied_on) : "Not yet")}</dd></div>
+        <div><dt>Next</dt><dd>${esc(r.next_action || "—")}${r.next_action_due ? ` · ${esc(fmtDay(r.next_action_due))}` : ""}</dd></div>
+      </dl>
+      ${r.why ? `<p class="prose"><span class="eyebrow">Why it fits</span><br>${esc(r.why)}</p>` : ""}
+      ${r.gaps ? `<p class="prose"><span class="eyebrow">Gaps and risks</span><br>${esc(r.gaps)}</p>` : ""}
+      ${r.notes ? `<p class="prose"><span class="eyebrow">Notes</span><br>${esc(r.notes)}</p>` : ""}
+      <div class="actions">
+        ${url ? `<a href="${esc(url)}" target="_blank" rel="noopener">Open posting ↗</a>` : ""}
+        ${r.has_application ? `<span class="muted">Resume and cover letter: <span class="path">applications/${esc(r._id)}/</span></span>` : `<span class="muted">Not tailored yet. Ask Claude: <span class="path">/job-tailor ${esc(r._id)}</span></span>`}
+      </div>
+      ${canDraft ? `<div class="actions"><button class="btn ghost" type="button" data-draft="${esc(r._id)}" ${draft && draft.busy ? "disabled" : ""}>${draft && draft.text ? "Write another" : "Draft follow-up"}</button></div>` : ""}
+      ${draft ? `<div class="draft">
+        <pre>${esc(draft.text || (draft.busy ? "Thinking…" : ""))}</pre>
+        ${draft.error ? `<div class="note">${esc(draft.error)}</div>` : ""}
+        ${draft.text && !draft.busy ? `<div class="actions"><button class="btn" type="button" data-copy="${esc(r._id)}">Copy</button><span class="note">Paste it into LinkedIn, a job board or email and send it yourself.</span></div>` : ""}
+      </div>` : ""}
+    </div>`;
+  }
+
+  function renderRoles() {
+    if (!state.loaded.roles) return;
+    if (!state.roles.length) {
+      $("roles").innerHTML = `<div class="empty"><b>No roles yet.</b> Ask Claude to run <span class="path">/job-scan</span>, or paste a job link with <span class="path">/job-tailor</span>. They'll appear here.</div>`;
+      return;
+    }
+    const list = visibleRoles();
+    if (!list.length) { $("roles").innerHTML = `<div class="empty">Nothing in this stage. <button class="linkbtn" type="button" data-f-all>Show all roles</button></div>`; return; }
+    $("roles").innerHTML = list.map((r) => {
+      const open = ui.open.has(r._id);
+      const d = relDue(r.next_action_due);
+      const sc = Math.max(0, Math.min(100, Number(r.fit_score) || 0));
+      const next = r.next_action ? `${r.next_action}${r.next_action_due ? " · " : ""}` : "";
+      return `<article class="role" data-id="${esc(r._id)}" data-closed="${CLOSED.has(r.status)}">
+        <div class="role-row">
+          <button class="role-main" type="button" aria-expanded="${open}" data-toggle="${esc(r._id)}">
+            <span class="code" title="${esc(r.location)}">${esc(cityCode(r))}</span>
+            <span class="title">
+              <span><span class="co">${esc(r.company)}</span></span>
+              <span class="ro">${esc(r.role)}</span>
+              <span class="meta">${esc(next)}${r.next_action_due ? `<span class="next-due" data-urgency="${d.urgency}">${esc(d.text)}</span>` : (next ? "" : esc(r.location))}</span>
+            </span>
+            <span class="score" aria-label="Fit score ${sc} out of 100"><b>${sc}</b><span class="bar"><i style="width:${sc}%"></i></span></span>
+          </button>
+          <select class="status st-${esc(r.status)}" id="status-${esc(r._id)}" data-status="${esc(r._id)}" aria-label="Status for ${esc(r.company)}" ${ui.readOnly ? "disabled" : ""}>
+            ${STATUSES.map(([k, l]) => `<option value="${k}" ${k === r.status ? "selected" : ""}>${l}</option>`).join("")}
+          </select>
+        </div>
+        ${open ? roleDetail(r) : ""}
+      </article>`;
+    }).join("");
+  }
+
+  $("roles").addEventListener("click", async (e) => {
+    if (e.target.closest("[data-f-all]")) return setFilter("all");
+    const t = e.target.closest("[data-toggle]");
+    if (t) { const id = t.dataset.toggle; ui.open.has(id) ? ui.open.delete(id) : ui.open.add(id); return renderRoles(); }
+    const d = e.target.closest("[data-draft]");
+    if (d) return draftFollowUp(d.dataset.draft, !!(ui.drafts[d.dataset.draft] && ui.drafts[d.dataset.draft].text));
+    const c = e.target.closest("[data-copy]");
+    if (c) {
+      const text = ui.drafts[c.dataset.copy]?.text || "";
+      try { await navigator.clipboard.writeText(text); toast("Copied. Paste it and send it yourself."); }
+      catch (err) {
+        const pre = c.closest(".draft").querySelector("pre"); const range = document.createRange(); range.selectNodeContents(pre);
+        const sel = getSelection(); sel.removeAllRanges(); sel.addRange(range); toast("Selected. Press Copy on your keyboard.");
+      }
+    }
+  });
+
+  $("roles").addEventListener("change", async (e) => {
+    const s = e.target.closest("[data-status]"); if (!s || !ui.db) return;
+    const id = s.dataset.status; const r = state.roles.find((x) => x._id === id); if (!r) return;
+    const status = s.value; const now = new Date();
+    const patch = { status, updated_at: now.toISOString(), updated_from: "board" };
+    if (status === "applied" && !r.applied_on) {
+      const due = new Date(today()); due.setDate(due.getDate() + 7);
+      Object.assign(patch, { applied_on: iso(today()), next_action: "follow up", next_action_due: iso(due) });
+    } else if (status === "screening" || status === "interviewing") {
+      Object.assign(patch, { next_action: `prep: /job-prep ${id}`, next_action_due: "" });
+    } else if (CLOSED.has(status) || status === "offer") {
+      Object.assign(patch, { next_action: "", next_action_due: "" });
+    }
+    s.disabled = true;
+    try { await ui.db.doc("roles/" + id).update(patch); toast(`Saved. ${r.company} is now ${LABEL[status]}.`); }
+    catch (err) {
+      if (err && err.code === "invalid_argument") { ui.readOnly = true; toast("This board is read-only for you."); }
+      else toast("Couldn't save that change. Check your connection and try again.");
+      renderRoles();
+    }
+  });
+
+  async function draftFollowUp(id, fresh) {
+    const r = state.roles.find((x) => x._id === id); if (!r || !ui.sample) return;
+    ui.drafts[id] = { busy: true, text: "" }; ui.open.add(id); renderRoles();
+    const facts = [
+      `Company: ${r.company}`, `Role: ${r.role}`, `Location: ${r.location}`,
+      `Applied on: ${r.applied_on || "recently"}`, `Current stage: ${LABEL[r.status] || r.status}`,
+      r.next_action ? `What the follow-up should cover: ${r.next_action}` : "", r.notes ? `Notes: ${r.notes}` : "",
+    ].filter(Boolean).join("\n");
+    const who = (state.meta && state.meta.candidate) || {};
+    const name = who.name || "the candidate";
+    const sign = who.first || (who.name ? who.name.split(" ")[0] : "");
+    const prompt = `Write a short follow-up message from ${name}${who.summary ? ", " + who.summary : ""}, about a job application.\n\n${facts}\n\nRules: under 90 words; plain and direct; no exclamation marks; no clichés like "I hope this finds you well"; don't invent facts, names, numbers or achievements beyond what's above; if the notes mention questions to ask (for example the client or the package), ask them politely in one sentence. Write it so it works as a LinkedIn message or a short email. Output only the message text, starting with a greeting${sign ? ` and ending with "${sign}"` : ""}.`;
+    try {
+      const { text } = await ui.sample(prompt, {
+        cache: fresh ? false : true,
+        onText: ({ text }) => { ui.drafts[id] = { busy: true, text }; patchDraft(id); },
+      });
+      ui.drafts[id] = { busy: false, text };
+    } catch (err) {
+      const code = err && err.code;
+      if (["not_granted", "sampling_disabled", "not_declared", "capability_disabled", "capability_removed"].includes(code)) { ui.sample = null; ui.drafts[id] = { busy: false, text: "", error: "Drafting isn't available here. Ask Claude in chat to draft it instead." }; }
+      else if (code === "rate_limited") ui.drafts[id] = { busy: false, text: err.text || "", error: "Too many requests right now. Try again in a minute." };
+      else if (code === "cancelled") ui.drafts[id] = { busy: false, text: err.text || "" };
+      else ui.drafts[id] = { busy: false, text: err && err.text || "", error: "The draft didn't finish. Try again." };
+    }
+    renderRoles(); renderUpNext();
+  }
+  function patchDraft(id) {
+    const pre = document.querySelector(`.role[data-id="${CSS.escape(id)}"] .draft pre`);
+    if (pre) pre.textContent = ui.drafts[id].text; else renderRoles();
+  }
+
+  // ---------- Scan ----------
+  function renderScan() {
+    if (!state.loaded.scans) return;
+    const s = state.scans[0];
+    if (!s) { $("scan").innerHTML = `<h2>Latest scan</h2><div class="muted">No scans yet. The daily scan runs on weekdays around 8:30.</div>`; return; }
+    const top = Array.isArray(s.top) ? s.top : [];
+    $("scan").innerHTML = `
+      <div><div class="eyebrow">${esc(new Date((s.date || "") + "T12:00:00").toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" }))}</div><h2>Latest scan</h2></div>
+      <div class="scan-stats">
+        <div><b>${esc(s.scored ?? "—")}</b><span>roles scored</span></div>
+        <div><b>${esc(s.added ?? "—")}</b><span>added to tracker</span></div>
+      </div>
+      ${top.length ? `<div><div class="eyebrow" style="margin-bottom:8px">Top picks</div><ol class="top3">${top.map((t) => `
+        <li><span class="sc">${esc(t.score)}</span><span>${safeUrl(t.url) ? `<a href="${esc(safeUrl(t.url))}" target="_blank" rel="noopener">${esc(t.company)}</a>` : `<b>${esc(t.company)}</b>`} · ${esc(t.role)}<small>${esc(t.location)}${t.why ? " · " + esc(t.why) : ""}</small></span></li>`).join("")}</ol></div>` : ""}
+      ${s.pattern ? `<div class="callout">${esc(s.pattern)}</div>` : ""}
+      ${s.sources ? `<div class="muted" style="font-size:12.5px">${esc(s.sources)}</div>` : ""}`;
+  }
+
+  // ---------- Questions ----------
+  function renderQuestions() {
+    if (!state.loaded.questions) return;
+    const qs = state.questions;
+    const roleName = (id) => (state.roles.find((r) => r._id === id) || {}).company || id;
+    const open = qs.filter((q) => !q.answer), done = qs.filter((q) => q.answer);
+    const card = (q) => `<div class="q" data-q="${esc(q._id)}">
+        <p>${esc(q.text)}</p>
+        ${Array.isArray(q.applies_to) && q.applies_to.length ? `<div class="helps">Helps with: ${q.applies_to.map((id) => esc(roleName(id))).join(", ")}${q.why ? " · " + esc(q.why) : ""}</div>` : (q.why ? `<div class="helps">${esc(q.why)}</div>` : "")}
+        <textarea id="answer-${esc(q._id)}" aria-label="Your answer" placeholder="Your answer, in your own words" ${ui.readOnly ? "disabled" : ""}>${esc(ui.answers[q._id] ?? q.answer ?? "")}</textarea>
+        <div class="row"><button class="btn" type="button" data-save="${esc(q._id)}" ${ui.readOnly ? "disabled" : ""}>Save answer</button>${q.answer ? `<span class="saved">Saved ${esc(fmtDay(q.answered_at))}</span>` : ""}</div>
+      </div>`;
+    $("questions").innerHTML = `<h2 id="h-q">Questions for you</h2>
+      ${open.length ? `<div class="muted" style="font-size:13.5px">Claude adds your answers to your master resume the next time you talk to it. Only real experience goes in.</div>${open.map(card).join("")}` : `<div class="muted">All answered. Claude will fold them into your resume next session.</div>`}
+      ${done.length ? `<details class="answered"><summary>${done.length} answered</summary>${done.map(card).join("")}</details>` : ""}`;
+  }
+  $("questions").addEventListener("input", (e) => {
+    const t = e.target.closest("textarea"); if (!t) return;
+    ui.answers[t.closest("[data-q]").dataset.q] = t.value;
+  });
+  $("questions").addEventListener("click", async (e) => {
+    const b = e.target.closest("[data-save]"); if (!b || !ui.db) return;
+    const id = b.dataset.save; const text = (ui.answers[id] ?? $("answer-" + id).value).trim();
+    if (!text) { toast("Write an answer first."); return; }
+    b.disabled = true;
+    try { await ui.db.doc("questions/" + id).update({ answer: text, answered_at: new Date().toISOString(), updated_from: "board" }); delete ui.answers[id]; toast("Answer saved. Claude picks it up next session."); }
+    catch (err) { b.disabled = false; toast(err && err.code === "invalid_argument" ? "This board is read-only for you." : "Couldn't save. Try again."); }
+  });
+
+  // ---------- Meta ----------
+  function renderMeta() {
+    const m = state.meta;
+    if (!m) { $("sync").textContent = "Waiting for Claude's first sync"; return; }
+    const when = m.synced_at ? new Date(m.synced_at).toLocaleString(undefined, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }) : "—";
+    $("sync").innerHTML = `Synced with tracker.csv<br><b>${esc(when)}</b>`;
+    if (m.floors) $("floors").textContent = m.floors;
+    if (m.focus) $("focus").textContent = m.focus;
+  }
+
+  function renderAll() { renderPipeline(); renderFilterChips(); renderUpNext(); renderRoles(); renderScan(); renderQuestions(); renderMeta(); }
+  renderAll();
+
+  // ---------- Boot ----------
+  (async () => {
+    const db = await (window.claude?.use?.("db") ?? Promise.resolve(null));
+    if (!db) {
+      const msg = `<div class="empty"><b>Your board lives on claude.ai.</b> Open this page there while signed in to see your roles.</div>`;
+      $("roles").innerHTML = msg; $("upnext").innerHTML = ""; $("sync").textContent = "Not connected";
+      $("scan").innerHTML = `<h2>Latest scan</h2><div class="muted">Not connected.</div>`; $("questions").innerHTML = `<h2>Questions for you</h2><div class="muted">Not connected.</div>`;
+      return;
+    }
+    ui.db = db;
+    const fail = (where) => (err) => { if (err && err.code !== "unavailable") toast(`Couldn't load ${where}. Reload the page to try again.`); };
+    db.collection("roles").onSnapshot((snap) => {
+      state.roles = snap.docs.map((d) => ({ _id: d.id, ...d.data() }));
+      state.loaded.roles = true; renderPipeline(); renderUpNext(); renderRoles(); renderQuestions();
+    }, fail("roles"));
+    db.collection("scans").orderBy("date", "desc").limit(1).onSnapshot((snap) => {
+      state.scans = snap.docs.map((d) => ({ _id: d.id, ...d.data() })); state.loaded.scans = true; renderScan();
+    }, fail("the latest scan"));
+    db.collection("questions").orderBy("order").onSnapshot((snap) => {
+      state.questions = snap.docs.map((d) => ({ _id: d.id, ...d.data() })); state.loaded.questions = true; renderQuestions(); renderUpNext();
+    }, fail("questions"));
+    db.doc("meta/board").onSnapshot((snap) => { state.meta = snap.exists ? snap.data() : null; renderMeta(); }, fail("sync info"));
+
+    const sample = await (window.claude?.use?.("sample") ?? Promise.resolve(null));
+    if (sample) { ui.sample = sample; renderUpNext(); renderRoles(); }
+  })();
+})();
+</script>

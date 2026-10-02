@@ -1,0 +1,15 @@
+# Your personal data stays local
+profile/resume.md
+profile/preferences.md
+profile/board.json
+profile/*.pdf
+tracker.csv
+scans/
+applications/
+.board/
+scheduled/*.local.md
+*.pdf
+*.docx
+
+node_modules/
+.DS_Store

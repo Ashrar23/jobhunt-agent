@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Resume</title>
+<!--
+  Template for tailored resumes. Copy to applications/<id>/resume.html,
+  replace the content blocks, keep the CSS. 
+-->
+<style>
+  @page { size: A4; margin: 14mm 16mm; }
+  * { box-sizing: border-box; }
+  body { font-family: "Helvetica Neue", Arial, sans-serif; color: #1a1a1a; font-size: 10pt; line-height: 1.38; margin: 0; }
+  h1 { font-size: 26pt; letter-spacing: .5px; margin: 0; font-weight: 800; color: #14142b; }
+  .title { color: #3b3bb3; font-size: 12.5pt; margin: 2px 0 4px; }
+  .contact { color: #555; font-size: 8.8pt; }
+  .summary { margin: 10px 0 4px; }
+  h2 { color: #3b3bb3; font-size: 11.5pt; text-transform: uppercase; letter-spacing: .4px;
+       border-bottom: 1.2px solid #3b3bb3; padding-bottom: 2px; margin: 14px 0 6px; break-after: avoid; }
+  .job { margin-bottom: 8px; break-inside: avoid; }
+  .job h3 { font-size: 10.5pt; margin: 0; }
+  .meta { color: #666; font-style: italic; font-size: 9pt; margin-bottom: 2px; }
+  ul { margin: 2px 0 0; padding-left: 16px; }
+  li { margin: 1.5px 0; }
+  li::marker { color: #3b3bb3; }
+  .tag { color: #666; font-size: 8.5pt; font-weight: 600; }
+  .skills div { margin: 2px 0; display: grid; grid-template-columns: 160px 1fr; }
+</style>
+</head>
+<body>
+  <h1>YOUR NAME</h1>
+  <div class="title">{{HEADLINE — e.g. Senior Flutter Developer}}</div>
+  <div class="contact">{{phone}} | {{email}} | {{linkedin.com/in/you}} | {{github.com/you}} | {{City, Country}}</div>
+
+  <p class="summary">{{2–3 sentence summary tailored to the role, built only from profile/resume.md}}</p>
+
+  <h2>Experience</h2>
+  <div class="job">
+    <h3>{{Job title}}</h3>
+    <div class="meta">{{Company}} · {{MM/YYYY – Present}} · {{City}}</div>
+    <ul><li>{{bullets, most relevant to the job first}}</li></ul>
+  </div>
+  <div class="job">
+    <h3>{{Previous job title}}</h3>
+    <div class="meta">{{Company}} · {{YYYY – YYYY}} · {{City}}</div>
+    <ul><li>{{bullets}}</li></ul>
+  </div>
+
+  <h2>Projects</h2>
+  <div class="job">
+    <h3>{{Project}} <span class="tag">— Personal</span></h3>
+    <ul><li>{{bullet}}</li></ul>
+  </div>
+
+  <h2>Skills</h2>
+  <div class="skills">
+    <div><b>{{Group}}:</b> {{skills, the job's stack first}}</div>
+    <div><b>{{Group}}:</b> {{skills}}</div>
+  </div>
+
+  <h2>Education</h2>
+  <div class="job">
+    <h3>{{Degree}}</h3>
+    <div class="meta">{{School}} · {{YYYY – YYYY}} · {{City}}</div>
+  </div>
+
+  <h2>Languages</h2>
+  <div>{{Language — Level}}</div>
+</body>
+</html>
